@@ -2,87 +2,107 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
 
 local LP = Players.LocalPlayer
 repeat task.wait() until LP and LP:FindFirstChild("PlayerGui")
 local PG = LP.PlayerGui
 
--- Remove old GUI
+-- REMOVE OLD
 if PG:FindFirstChild("NEKO_GUI") then
     PG.NEKO_GUI:Destroy()
 end
 
 -- GUI
-local gui = Instance.new("ScreenGui")
+local gui = Instance.new("ScreenGui", PG)
 gui.Name = "NEKO_GUI"
 gui.ResetOnSpawn = false
-gui.Parent = PG
 
--- OPEN BUTTON
-local open = Instance.new("TextButton")
+-- BUTTON
+local open = Instance.new("TextButton", gui)
 open.Size = UDim2.new(0,80,0,40)
 open.Position = UDim2.new(0,20,0.5,0)
 open.Text = "NEKO"
-open.BackgroundColor3 = Color3.fromRGB(255,255,255)
-open.TextColor3 = Color3.fromRGB(0,0,0)
-open.Parent = gui
+open.BackgroundColor3 = Color3.new(1,1,1)
+open.TextColor3 = Color3.new(0,0,0)
 
--- MAIN FRAME
-local frame = Instance.new("Frame")
+-- FRAME
+local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.new(0,340,0,420)
 frame.Position = UDim2.new(0.5,-170,0.5,-210)
 frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
 frame.Visible = false
-frame.Parent = gui
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,8)
+Instance.new("UICorner", frame)
 
 -- TITLE
-local title = Instance.new("TextLabel")
+local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,0,0,35)
-title.Text = "NEKO HUB"
+title.Text = "NEKO PRO FIXED"
 title.TextColor3 = Color3.new(1,1,1)
 title.BackgroundTransparency = 1
-title.Parent = frame
 
 -- LAYOUT
 local layout = Instance.new("UIListLayout", frame)
 layout.Padding = UDim.new(0,6)
 
--- TOGGLE
 open.MouseButton1Click:Connect(function()
     frame.Visible = not frame.Visible
 end)
 
--- BUTTON CREATOR
-local function createBtn(text, callback)
-    local b = Instance.new("TextButton")
+-- BUTTON FUNCTION
+local function btn(txt, func)
+    local b = Instance.new("TextButton", frame)
     b.Size = UDim2.new(1,-12,0,28)
-    b.Text = text
+    b.Text = txt
     b.BackgroundColor3 = Color3.fromRGB(20,20,20)
     b.TextColor3 = Color3.new(1,1,1)
-    b.Parent = frame
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0,6)
-    b.MouseButton1Click:Connect(callback)
+    Instance.new("UICorner", b)
+    b.MouseButton1Click:Connect(func)
 end
 
---// SPEED
-createBtn("Speed x2", function()
-    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if h then h.WalkSpeed = 32 end
+--// SPEED (ANTI RESET)
+local speedOn = false
+local speedValue = 32
+
+btn("Speed Toggle", function()
+    speedOn = not speedOn
 end)
 
-createBtn("Speed x5", function()
-    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if h then h.WalkSpeed = 80 end
+RunService.Heartbeat:Connect(function()
+    if speedOn and LP.Character then
+        local h = LP.Character:FindFirstChildOfClass("Humanoid")
+        if h then
+            h.WalkSpeed = speedValue
+        end
+    end
 end)
 
-createBtn("Reset Speed", function()
-    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if h then h.WalkSpeed = 16 end
+--// LONG JUMP + SLOW FALL
+local lowGrav = false
+
+btn("Long Jump Toggle", function()
+    lowGrav = not lowGrav
 end)
 
---// JUMP
-createBtn("High Jump", function()
+RunService.Heartbeat:Connect(function()
+    if lowGrav and LP.Character then
+        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+        local h = LP.Character:FindFirstChildOfClass("Humanoid")
+
+        if hrp and h then
+            if h:GetState() == Enum.HumanoidStateType.Freefall then
+                hrp.Velocity = Vector3.new(
+                    hrp.Velocity.X,
+                    hrp.Velocity.Y * 0.6, -- slow fall
+                    hrp.Velocity.Z
+                )
+            end
+        end
+    end
+end)
+
+-- Jump boost
+btn("Boost Jump", function()
     local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
     if h then
         h.UseJumpPower = true
@@ -90,43 +110,10 @@ createBtn("High Jump", function()
     end
 end)
 
-createBtn("Super Jump", function()
-    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if h then
-        h.UseJumpPower = true
-        h.JumpPower = 200
-    end
-end)
-
-createBtn("Reset Jump", function()
-    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if h then h.JumpPower = 50 end
-end)
-
---// STRONG LOW GRAVITY
-local lowGrav = false
-createBtn("Low Gravity Toggle", function()
-    lowGrav = not lowGrav
-end)
-
-RunService.Heartbeat:Connect(function()
-    if lowGrav and LP.Character then
-        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.Velocity = Vector3.new(
-                hrp.Velocity.X,
-                math.max(hrp.Velocity.Y, 30),
-                hrp.Velocity.Z
-            )
-        end
-    end
-end)
-
---// FLY (MOBILE + PC)
+--// SMOOTH FLY (NO TELEPORT)
 local flying = false
-local flySpeed = 90
 
-createBtn("Fly Toggle", function()
+btn("Fly Toggle", function()
     flying = not flying
 
     local char = LP.Character
@@ -134,32 +121,20 @@ createBtn("Fly Toggle", function()
     local hrp = char:WaitForChild("HumanoidRootPart")
 
     if flying then
-        local bv = Instance.new("BodyVelocity")
+        local bv = Instance.new("BodyVelocity", hrp)
         bv.Name = "NEKO_FLY"
-        bv.MaxForce = Vector3.new(9e9,9e9,9e9)
-        bv.Parent = hrp
+        bv.MaxForce = Vector3.new(1e5,1e5,1e5)
 
         RunService:BindToRenderStep("NEKO_FLY",0,function()
             if not flying or not bv.Parent then return end
 
-            local cam = workspace.CurrentCamera
-            local moveDir = LP.Character:FindFirstChildOfClass("Humanoid").MoveDirection
+            local move = char:FindFirstChildOfClass("Humanoid").MoveDirection
+            local dir = move
 
-            local dir = Vector3.zero
+            -- slight upward so no fall
+            dir += Vector3.new(0,0.1,0)
 
-            -- MOBILE joystick
-            dir += moveDir
-
-            -- PC keys
-            if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
-
-            -- upward support
-            dir += Vector3.new(0,0.2,0)
-
-            bv.Velocity = dir * flySpeed
+            bv.Velocity = dir * 70
         end)
 
     else
@@ -172,6 +147,10 @@ end)
 
 --// NOCLIP
 local noclip = false
+btn("Noclip", function()
+    noclip = not noclip
+end)
+
 RunService.Stepped:Connect(function()
     if noclip and LP.Character then
         for _,v in pairs(LP.Character:GetDescendants()) do
@@ -180,24 +159,63 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-createBtn("Noclip Toggle", function()
-    noclip = not noclip
-end)
+--// ESP PRO
+local espOn = false
+local esp = {}
 
---// ESP
-createBtn("ESP Players", function()
-    for _,p in pairs(Players:GetPlayers()) do
-        if p ~= LP and p.Character then
-            if not p.Character:FindFirstChild("Highlight") then
-                Instance.new("Highlight", p.Character)
-            end
+local function addESP(p)
+    if p == LP then return end
+
+    local function apply(c)
+        if not c then return end
+        local hrp = c:WaitForChild("HumanoidRootPart",3)
+        if not hrp then return end
+
+        local box = Instance.new("BoxHandleAdornment")
+        box.Size = Vector3.new(4,6,2)
+        box.Color3 = Color3.new(1,0,0)
+        box.AlwaysOnTop = true
+        box.Adornee = hrp
+        box.Parent = hrp
+
+        local bill = Instance.new("BillboardGui")
+        bill.Size = UDim2.new(0,100,0,20)
+        bill.AlwaysOnTop = true
+        bill.Adornee = hrp
+
+        local txt = Instance.new("TextLabel", bill)
+        txt.Size = UDim2.new(1,0,1,0)
+        txt.Text = p.Name
+        txt.TextColor3 = Color3.new(1,1,1)
+        txt.BackgroundTransparency = 1
+
+        bill.Parent = hrp
+
+        esp[p] = {box, bill}
+    end
+
+    if p.Character then apply(p.Character) end
+    p.CharacterAdded:Connect(apply)
+end
+
+btn("ESP Toggle", function()
+    espOn = not espOn
+
+    if espOn then
+        for _,p in pairs(Players:GetPlayers()) do
+            addESP(p)
         end
+    else
+        for _,v in pairs(esp) do
+            for _,o in pairs(v) do o:Destroy() end
+        end
+        esp = {}
     end
 end)
 
---// AIM ASSIST (ABILITY STYLE)
+--// AIM ASSIST
 local aim = false
-createBtn("Aim Assist Toggle", function()
+btn("Aim Assist", function()
     aim = not aim
 end)
 
@@ -207,7 +225,7 @@ RunService.RenderStepped:Connect(function()
     local closest, dist = nil, math.huge
     for _,p in pairs(Players:GetPlayers()) do
         if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            local mag = (p.Character.HumanoidRootPart.Position - workspace.CurrentCamera.CFrame.Position).Magnitude
+            local mag = (p.Character.HumanoidRootPart.Position - Camera.CFrame.Position).Magnitude
             if mag < dist then
                 dist = mag
                 closest = p
@@ -216,19 +234,6 @@ RunService.RenderStepped:Connect(function()
     end
 
     if closest then
-        workspace.CurrentCamera.CFrame = CFrame.new(
-            workspace.CurrentCamera.CFrame.Position,
-            closest.Character.HumanoidRootPart.Position
-        )
+        Camera.CFrame = CFrame.new(Camera.CFrame.Position, closest.Character.HumanoidRootPart.Position)
     end
-end)
-
--- EXTRA CLEAN FUNCTIONS (no fake spam)
-createBtn("Sit", function()
-    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if h then h.Sit = true end
-end)
-
-createBtn("Reset Character", function()
-    LP.Character:BreakJoints()
 end)
