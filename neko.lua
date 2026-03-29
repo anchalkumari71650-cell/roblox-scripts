@@ -12,13 +12,13 @@ if PG:FindFirstChild("NEKO_GUI") then
     PG.NEKO_GUI:Destroy()
 end
 
--- MAIN GUI
+-- GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "NEKO_GUI"
 gui.ResetOnSpawn = false
 gui.Parent = PG
 
--- OPEN BUTTON (white square)
+-- OPEN BUTTON
 local open = Instance.new("TextButton")
 open.Size = UDim2.new(0,80,0,40)
 open.Position = UDim2.new(0,20,0.5,0)
@@ -27,7 +27,7 @@ open.BackgroundColor3 = Color3.fromRGB(255,255,255)
 open.TextColor3 = Color3.fromRGB(0,0,0)
 open.Parent = gui
 
--- MAIN FRAME (centered black rectangle)
+-- MAIN FRAME
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0,340,0,420)
 frame.Position = UDim2.new(0.5,-170,0.5,-210)
@@ -48,12 +48,12 @@ title.Parent = frame
 local layout = Instance.new("UIListLayout", frame)
 layout.Padding = UDim.new(0,6)
 
--- TOGGLE VISIBILITY
+-- TOGGLE
 open.MouseButton1Click:Connect(function()
     frame.Visible = not frame.Visible
 end)
 
--- BUTTON CREATOR FUNCTION
+-- BUTTON CREATOR
 local function createBtn(text, callback)
     local b = Instance.new("TextButton")
     b.Size = UDim2.new(1,-12,0,28)
@@ -65,9 +65,7 @@ local function createBtn(text, callback)
     b.MouseButton1Click:Connect(callback)
 end
 
---// PLAYER FUNCTIONS
-
--- Speed
+--// SPEED
 createBtn("Speed x2", function()
     local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
     if h then h.WalkSpeed = 32 end
@@ -83,10 +81,21 @@ createBtn("Reset Speed", function()
     if h then h.WalkSpeed = 16 end
 end)
 
--- Jump
+--// JUMP
 createBtn("High Jump", function()
     local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if h then h.JumpPower = 100 end
+    if h then
+        h.UseJumpPower = true
+        h.JumpPower = 120
+    end
+end)
+
+createBtn("Super Jump", function()
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then
+        h.UseJumpPower = true
+        h.JumpPower = 200
+    end
 end)
 
 createBtn("Reset Jump", function()
@@ -94,45 +103,74 @@ createBtn("Reset Jump", function()
     if h then h.JumpPower = 50 end
 end)
 
--- Gravity
-createBtn("Low Gravity", function()
-    workspace.Gravity = 50
+--// STRONG LOW GRAVITY
+local lowGrav = false
+createBtn("Low Gravity Toggle", function()
+    lowGrav = not lowGrav
 end)
 
-createBtn("Reset Gravity", function()
-    workspace.Gravity = 196.2
-end)
-
--- Fly (WASD)
-local flying = false
-local bv, bg
-createBtn("Fly Toggle", function()
-    flying = not flying
-    local char = LP.Character
-    if not char then return end
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    if flying then
-        bv = Instance.new("BodyVelocity", hrp)
-        bg = Instance.new("BodyGyro", hrp)
-        bv.MaxForce = Vector3.new(9e9,9e9,9e9)
-        bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
-        RunService:BindToRenderStep("fly",0,function()
-            local dir = Vector3.zero
-            if UIS:IsKeyDown(Enum.KeyCode.W) then dir += workspace.CurrentCamera.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= workspace.CurrentCamera.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= workspace.CurrentCamera.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then dir += workspace.CurrentCamera.CFrame.RightVector end
-            bv.Velocity = dir * 70
-            bg.CFrame = workspace.CurrentCamera.CFrame
-        end)
-    else
-        RunService:UnbindFromRenderStep("fly")
-        if bv then bv:Destroy() end
-        if bg then bg:Destroy() end
+RunService.Heartbeat:Connect(function()
+    if lowGrav and LP.Character then
+        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.new(
+                hrp.Velocity.X,
+                math.max(hrp.Velocity.Y, 30),
+                hrp.Velocity.Z
+            )
+        end
     end
 end)
 
--- Noclip
+--// FLY (MOBILE + PC)
+local flying = false
+local flySpeed = 90
+
+createBtn("Fly Toggle", function()
+    flying = not flying
+
+    local char = LP.Character
+    if not char then return end
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    if flying then
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "NEKO_FLY"
+        bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+        bv.Parent = hrp
+
+        RunService:BindToRenderStep("NEKO_FLY",0,function()
+            if not flying or not bv.Parent then return end
+
+            local cam = workspace.CurrentCamera
+            local moveDir = LP.Character:FindFirstChildOfClass("Humanoid").MoveDirection
+
+            local dir = Vector3.zero
+
+            -- MOBILE joystick
+            dir += moveDir
+
+            -- PC keys
+            if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+
+            -- upward support
+            dir += Vector3.new(0,0.2,0)
+
+            bv.Velocity = dir * flySpeed
+        end)
+
+    else
+        RunService:UnbindFromRenderStep("NEKO_FLY")
+        if hrp:FindFirstChild("NEKO_FLY") then
+            hrp.NEKO_FLY:Destroy()
+        end
+    end
+end)
+
+--// NOCLIP
 local noclip = false
 RunService.Stepped:Connect(function()
     if noclip and LP.Character then
@@ -141,11 +179,12 @@ RunService.Stepped:Connect(function()
         end
     end
 end)
+
 createBtn("Noclip Toggle", function()
     noclip = not noclip
 end)
 
--- ESP
+--// ESP
 createBtn("ESP Players", function()
     for _,p in pairs(Players:GetPlayers()) do
         if p ~= LP and p.Character then
@@ -156,13 +195,15 @@ createBtn("ESP Players", function()
     end
 end)
 
--- Aim Assist (ability style)
+--// AIM ASSIST (ABILITY STYLE)
 local aim = false
 createBtn("Aim Assist Toggle", function()
     aim = not aim
 end)
+
 RunService.RenderStepped:Connect(function()
     if not aim then return end
+
     local closest, dist = nil, math.huge
     for _,p in pairs(Players:GetPlayers()) do
         if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -173,6 +214,7 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
+
     if closest then
         workspace.CurrentCamera.CFrame = CFrame.new(
             workspace.CurrentCamera.CFrame.Position,
@@ -181,9 +223,12 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Extra functions to reach 30+
-for i=1,20 do
-    createBtn("Extra "..i, function()
-        print("Extra function "..i)
-    end)
-end
+-- EXTRA CLEAN FUNCTIONS (no fake spam)
+createBtn("Sit", function()
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.Sit = true end
+end)
+
+createBtn("Reset Character", function()
+    LP.Character:BreakJoints()
+end)
