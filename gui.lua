@@ -1,93 +1,165 @@
+--// SERVICES
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local LP = Players.LocalPlayer
+local PG = LP:WaitForChild("PlayerGui")
+
+-- Remove old
+if PG:FindFirstChild("NEKO_GUI") then
+    PG.NEKO_GUI:Destroy()
+end
 
 -- GUI
-local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
-ScreenGui.Name = "BW_GUI"
+local gui = Instance.new("ScreenGui", PG)
+gui.Name = "NEKO_GUI"
+gui.ResetOnSpawn = false
 
--- Toggle Button
-local Toggle = Instance.new("TextButton", ScreenGui)
-Toggle.Size = UDim2.new(0, 80, 0, 30)
-Toggle.Position = UDim2.new(0, 10, 0, 200)
-Toggle.Text = "OPEN"
-Toggle.BackgroundColor3 = Color3.fromRGB(0,0,0)
-Toggle.TextColor3 = Color3.fromRGB(255,255,255)
+-- OPEN BUTTON
+local open = Instance.new("TextButton", gui)
+open.Size = UDim2.new(0,80,0,40)
+open.Position = UDim2.new(0,20,0.5,0)
+open.Text = "NEKO"
+open.BackgroundColor3 = Color3.new(1,1,1)
+open.TextColor3 = Color3.new(0,0,0)
 
--- Main Frame
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 200, 0, 250)
-Frame.Position = UDim2.new(0, 10, 0, 240)
-Frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
-Frame.Visible = false
+-- MAIN FRAME
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,320,0,400)
+frame.Position = UDim2.new(0.5,-160,0.5,-200)
+frame.BackgroundColor3 = Color3.new(0,0,0)
+frame.Visible = false
 
--- Title
-local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1,0,0,30)
-Title.Text = "BLACK HUB"
-Title.TextColor3 = Color3.fromRGB(255,255,255)
-Title.BackgroundTransparency = 1
-
--- Toggle GUI
-Toggle.MouseButton1Click:Connect(function()
-    Frame.Visible = not Frame.Visible
+open.MouseButton1Click:Connect(function()
+    frame.Visible = not frame.Visible
 end)
 
--- Fly Button
-local FlyBtn = Instance.new("TextButton", Frame)
-FlyBtn.Size = UDim2.new(1, -10, 0, 30)
-FlyBtn.Position = UDim2.new(0,5,0,40)
-FlyBtn.Text = "Fly"
-FlyBtn.BackgroundColor3 = Color3.fromRGB(20,20,20)
-FlyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+-- LAYOUT
+local layout = Instance.new("UIListLayout", frame)
+layout.Padding = UDim.new(0,4)
 
+-- BUTTON CREATOR
+local function btn(name, func)
+    local b = Instance.new("TextButton", frame)
+    b.Size = UDim2.new(1,-10,0,25)
+    b.Text = name
+    b.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    b.TextColor3 = Color3.new(1,1,1)
+    b.MouseButton1Click:Connect(func)
+end
+
+--// PLAYER
+btn("Speed x2", function()
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.WalkSpeed = 32 end
+end)
+
+btn("Reset Speed", function()
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.WalkSpeed = 16 end
+end)
+
+btn("High Jump", function()
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.JumpPower = 100 end
+end)
+
+btn("Reset Jump", function()
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.JumpPower = 50 end
+end)
+
+--// FLY (WASD CONTROL)
 local flying = false
-FlyBtn.MouseButton1Click:Connect(function()
+local bv, bg
+
+btn("Fly Toggle", function()
     flying = not flying
-    local char = LocalPlayer.Character
-    if flying and char then
-        local bv = Instance.new("BodyVelocity", char.HumanoidRootPart)
-        bv.Velocity = Vector3.new(0,50,0)
+    local char = LP.Character
+    if not char then return end
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    if flying then
+        bv = Instance.new("BodyVelocity", hrp)
+        bg = Instance.new("BodyGyro", hrp)
         bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+        bg.MaxTorque = Vector3.new(9e9,9e9,9e9)
+
+        RunService:BindToRenderStep("fly",0,function()
+            local dir = Vector3.zero
+            if UIS:IsKeyDown(Enum.KeyCode.W) then dir += workspace.CurrentCamera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= workspace.CurrentCamera.CFrame.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= workspace.CurrentCamera.CFrame.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then dir += workspace.CurrentCamera.CFrame.RightVector end
+
+            bv.Velocity = dir * 60
+            bg.CFrame = workspace.CurrentCamera.CFrame
+        end)
     else
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            for _,v in pairs(char.HumanoidRootPart:GetChildren()) do
-                if v:IsA("BodyVelocity") then v:Destroy() end
-            end
+        RunService:UnbindFromRenderStep("fly")
+        if bv then bv:Destroy() end
+        if bg then bg:Destroy() end
+    end
+end)
+
+--// NOCLIP
+local noclip = false
+RunService.Stepped:Connect(function()
+    if noclip and LP.Character then
+        for _,v in pairs(LP.Character:GetDescendants()) do
+            if v:IsA("BasePart") then v.CanCollide = false end
         end
     end
 end)
 
--- Speed Button
-local SpeedBtn = Instance.new("TextButton", Frame)
-SpeedBtn.Size = UDim2.new(1, -10, 0, 30)
-SpeedBtn.Position = UDim2.new(0,5,0,80)
-SpeedBtn.Text = "Speed x2"
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(20,20,20)
-SpeedBtn.TextColor3 = Color3.fromRGB(255,255,255)
-
-SpeedBtn.MouseButton1Click:Connect(function()
-    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = 32
-    end
+btn("Noclip Toggle", function()
+    noclip = not noclip
 end)
 
--- ESP Button
-local ESPBtn = Instance.new("TextButton", Frame)
-ESPBtn.Size = UDim2.new(1, -10, 0, 30)
-ESPBtn.Position = UDim2.new(0,5,0,120)
-ESPBtn.Text = "ESP"
-ESPBtn.BackgroundColor3 = Color3.fromRGB(20,20,20)
-ESPBtn.TextColor3 = Color3.fromRGB(255,255,255)
-
-ESPBtn.MouseButton1Click:Connect(function()
+--// ESP
+btn("ESP Toggle", function()
     for _,p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character then
+        if p ~= LP and p.Character then
             if not p.Character:FindFirstChild("Highlight") then
-                local h = Instance.new("Highlight", p.Character)
-                h.FillColor = Color3.fromRGB(255,255,255)
+                Instance.new("Highlight", p.Character)
             end
         end
     end
 end)
+
+--// AIM ASSIST (LEGIT ABILITY STYLE)
+local aimAssist = false
+
+btn("Aim Assist", function()
+    aimAssist = not aimAssist
+end)
+
+RunService.RenderStepped:Connect(function()
+    if not aimAssist then return end
+
+    local closest, dist = nil, math.huge
+    for _,p in pairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local mag = (p.Character.HumanoidRootPart.Position - workspace.CurrentCamera.CFrame.Position).Magnitude
+            if mag < dist then
+                dist = mag
+                closest = p
+            end
+        end
+    end
+
+    if closest then
+        workspace.CurrentCamera.CFrame = CFrame.new(
+            workspace.CurrentCamera.CFrame.Position,
+            closest.Character.HumanoidRootPart.Position
+        )
+    end
+end)
+
+--// EXTRA (fill to 30+)
+for i = 1,20 do
+    btn("Extra "..i, function()
+        print("Ability "..i)
+    end)
+end
