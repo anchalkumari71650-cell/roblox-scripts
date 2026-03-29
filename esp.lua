@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
 local function highlightCharacter(char)
-    if char:FindFirstChild("Highlight") then return end
+    if not char or char:FindFirstChild("Highlight") then return end
     
     local highlight = Instance.new("Highlight")
     highlight.FillColor = Color3.fromRGB(255, 0, 0)
@@ -11,18 +11,18 @@ local function highlightCharacter(char)
     highlight.Parent = char
 end
 
-local function addPlayer(player)
-    if player == LocalPlayer then return end
-    
-    if player.Character then
-        highlightCharacter(player.Character)
-    end
-    
-    player.CharacterAdded:Connect(highlightCharacter)
-end
-
 for _, player in pairs(Players:GetPlayers()) do
-    addPlayer(player)
+    if player ~= LocalPlayer then
+        if player.Character then
+            highlightCharacter(player.Character)
+        end
+        
+        player.CharacterAdded:Connect(highlightCharacter)
+    end
 end
 
-Players.PlayerAdded:Connect(addPlayer)
+Players.PlayerAdded:Connect(function(player)
+    if player ~= LocalPlayer then
+        player.CharacterAdded:Connect(highlightCharacter)
+    end
+end)
